@@ -7,7 +7,7 @@
 ![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD-EF7B4D?logo=argo)
 ![Helm](https://img.shields.io/badge/Helm-Charts-0F1689?logo=helm)
 ![AWS](https://img.shields.io/badge/Cloud-AWS-FF9900?logo=amazonaws)
-![GitHub](https://img.shields.io/badge/Repo-github.com%2FShubham--Master-k8s-gitops-platform-181717?logo=github)
+![GitHub](https://img.shields.io/badge/Repo-github.com%2FShubham--Master-181717?logo=github)
 
 ---
 
