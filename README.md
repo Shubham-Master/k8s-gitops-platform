@@ -245,6 +245,5 @@ This project showcases your expertise in:
 - Monitoring & Observability  
 - Platform Engineering at scale  
 
-It is a **flagship portfolio project** for DevOps/SRE/Platform Engineer roles.
 
 ---
