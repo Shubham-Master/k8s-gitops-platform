@@ -31,8 +31,8 @@ resource "aws_vpc" "main" {
   enable_dns_support   = true
 
   tags = {
-    Name                                            = "${var.cluster_name}-vpc"
-    "kubernetes.io/cluster/${var.cluster_name}"     = "shared"
+    Name                                        = "${var.cluster_name}-vpc"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   }
 }
 
@@ -49,9 +49,9 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name                                            = "${var.cluster_name}-public-${local.azs[count.index]}"
-    "kubernetes.io/cluster/${var.cluster_name}"     = "shared"
-    "kubernetes.io/role/elb"                        = "1"
+    Name                                        = "${var.cluster_name}-public-${local.azs[count.index]}"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    "kubernetes.io/role/elb"                    = "1"
   }
 }
 
@@ -62,9 +62,9 @@ resource "aws_subnet" "private" {
   availability_zone = local.azs[count.index]
 
   tags = {
-    Name                                            = "${var.cluster_name}-private-${local.azs[count.index]}"
-    "kubernetes.io/cluster/${var.cluster_name}"     = "owned"
-    "kubernetes.io/role/internal-elb"               = "1"
+    Name                                        = "${var.cluster_name}-private-${local.azs[count.index]}"
+    "kubernetes.io/cluster/${var.cluster_name}" = "owned"
+    "kubernetes.io/role/internal-elb"           = "1"
   }
 }
 
@@ -113,6 +113,6 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private[count.index].id
 }
 
-output "vpc_id"          { value = aws_vpc.main.id }
-output "public_subnets"  { value = aws_subnet.public[*].id }
+output "vpc_id" { value = aws_vpc.main.id }
+output "public_subnets" { value = aws_subnet.public[*].id }
 output "private_subnets" { value = aws_subnet.private[*].id }

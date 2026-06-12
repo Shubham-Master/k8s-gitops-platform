@@ -1,4 +1,4 @@
-variable "cluster_name"      { default = "gitops-platform" }
+variable "cluster_name" { default = "gitops-platform" }
 variable "oidc_provider_arn" {}
 variable "oidc_provider_url" {}
 
@@ -118,5 +118,5 @@ resource "aws_iam_role_policy_attachment" "cluster_autoscaler" {
   policy_arn = aws_iam_policy.cluster_autoscaler.arn
 }
 
-output "alb_controller_role_arn"      { value = aws_iam_role.alb_controller.arn }
-output "cluster_autoscaler_role_arn"  { value = aws_iam_role.cluster_autoscaler.arn }
+output "alb_controller_role_arn" { value = aws_iam_role.alb_controller.arn }
+output "cluster_autoscaler_role_arn" { value = aws_iam_role.cluster_autoscaler.arn }

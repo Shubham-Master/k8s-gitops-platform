@@ -11,17 +11,17 @@ terraform {
   }
 }
 
-variable "cluster_name"       { default = "gitops-platform" }
-variable "cluster_version"    { default = "1.29" }
-variable "region"             { default = "us-east-1" }
-variable "vpc_id"             {}
-variable "private_subnets"    { type = list(string) }
+variable "cluster_name" { default = "gitops-platform" }
+variable "cluster_version" { default = "1.29" }
+variable "region" { default = "us-east-1" }
+variable "vpc_id" {}
+variable "private_subnets" { type = list(string) }
 variable "node_instance_type" { default = "t3.medium" }
-variable "desired_nodes"      { default = 3 }
-variable "min_nodes"          { default = 1 }
-variable "max_nodes"          { default = 6 }
-variable "cluster_role_arn"   {}
-variable "node_role_arn"      {}
+variable "desired_nodes" { default = 3 }
+variable "min_nodes" { default = 1 }
+variable "max_nodes" { default = 6 }
+variable "cluster_role_arn" {}
+variable "node_role_arn" {}
 
 resource "aws_security_group" "cluster" {
   name        = "${var.cluster_name}-cluster-sg"
@@ -90,8 +90,8 @@ resource "aws_iam_openid_connect_provider" "eks" {
   url             = aws_eks_cluster.main.identity[0].oidc[0].issuer
 }
 
-output "cluster_name"              { value = aws_eks_cluster.main.name }
-output "cluster_endpoint"          { value = aws_eks_cluster.main.endpoint }
-output "cluster_ca_certificate"    { value = aws_eks_cluster.main.certificate_authority[0].data }
-output "oidc_provider_arn"         { value = aws_iam_openid_connect_provider.eks.arn }
-output "oidc_provider_url"         { value = aws_iam_openid_connect_provider.eks.url }
+output "cluster_name" { value = aws_eks_cluster.main.name }
+output "cluster_endpoint" { value = aws_eks_cluster.main.endpoint }
+output "cluster_ca_certificate" { value = aws_eks_cluster.main.certificate_authority[0].data }
+output "oidc_provider_arn" { value = aws_iam_openid_connect_provider.eks.arn }
+output "oidc_provider_url" { value = aws_iam_openid_connect_provider.eks.url }

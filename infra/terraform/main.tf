@@ -22,7 +22,7 @@ provider "aws" {
   region = var.region
 }
 
-variable "region"       { default = "us-east-1" }
+variable "region" { default = "us-east-1" }
 variable "cluster_name" { default = "gitops-platform" }
 
 # Phase 1: networking (no dependencies)
