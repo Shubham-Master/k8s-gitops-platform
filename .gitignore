@@ -1,0 +1,27 @@
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfplan
+.terraform.lock.hcl
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Helm
+charts/
+*.tgz
+
+# Secrets / credentials
+*.pem
+*.key
+*.crt
+secrets/
+.env
+kubeconfig
+
+# OS
+.DS_Store
+Thumbs.db

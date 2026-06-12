@@ -1,0 +1,20 @@
+apiVersion: v2
+name: observability
+description: Full observability stack — Prometheus, Grafana, Loki, Tempo
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+dependencies:
+  - name: kube-prometheus-stack
+    version: "58.x.x"
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: prometheus.enabled
+  - name: loki
+    version: "6.x.x"
+    repository: https://grafana.github.io/helm-charts
+    condition: loki.enabled
+  - name: tempo
+    version: "1.x.x"
+    repository: https://grafana.github.io/helm-charts
+    condition: tempo.enabled

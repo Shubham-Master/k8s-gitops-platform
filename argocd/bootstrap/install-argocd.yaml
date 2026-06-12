@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+---
+# Install ArgoCD — apply the upstream install manifest first:
+# kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+# Then apply this file to configure the server.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+  namespace: argocd
+data:
+  # Expose the server without TLS when behind an ALB that terminates TLS
+  server.insecure: "true"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  url: https://argocd.example.com
+  # GitHub SSO (replace with your GitHub org)
+  # dex.config: |
+  #   connectors:
+  #     - type: github
+  #       id: github
+  #       name: GitHub
+  #       config:
+  #         clientID: $dex.github.clientID
+  #         clientSecret: $dex.github.clientSecret
+  #         orgs:
+  #           - name: your-github-org
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server-ingress
+  namespace: argocd
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID
+spec:
+  rules:
+    - host: argocd.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80

@@ -1,0 +1,87 @@
+prometheus:
+  enabled: true
+
+loki:
+  enabled: true
+
+tempo:
+  enabled: true
+
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      retention: 15d
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp3
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 50Gi
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
+
+  grafana:
+    enabled: true
+    adminPassword: changeme   # override via sealed secret in prod
+    persistence:
+      enabled: true
+      storageClassName: gp3
+      size: 10Gi
+    ingress:
+      enabled: true
+      ingressClassName: alb
+      annotations:
+        kubernetes.io/ingress.class: alb
+        alb.ingress.kubernetes.io/scheme: internet-facing
+        alb.ingress.kubernetes.io/target-type: ip
+      hosts:
+        - grafana.example.com
+    additionalDataSources:
+      - name: Loki
+        type: loki
+        url: http://loki-gateway.monitoring.svc.cluster.local
+        access: proxy
+      - name: Tempo
+        type: tempo
+        url: http://tempo.monitoring.svc.cluster.local:3100
+        access: proxy
+
+  alertmanager:
+    alertmanagerSpec:
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp3
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 5Gi
+
+loki:
+  loki:
+    storage:
+      type: s3
+      s3:
+        region: us-east-1
+        bucketnames: gitops-platform-loki-chunks
+        s3ForcePathStyle: false
+    schemaConfig:
+      configs:
+        - from: "2024-01-01"
+          store: tsdb
+          object_store: s3
+          schema: v13
+          index:
+            prefix: loki_index_
+            period: 24h
+
+tempo:
+  tempo:
+    storage:
+      trace:
+        backend: s3
+        s3:
+          bucket: gitops-platform-tempo-traces
+          region: us-east-1

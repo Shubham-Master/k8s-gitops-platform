@@ -1,0 +1,163 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+
+jobs:
+  # ── Terraform validate ─────────────────────────────────────────────────────
+  terraform-validate:
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8.0"
+
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive
+        working-directory: infra/terraform
+
+      - name: Terraform init (vpc)
+        run: terraform init -backend=false
+        working-directory: infra/terraform/vpc
+
+      - name: Terraform validate (vpc)
+        run: terraform validate
+        working-directory: infra/terraform/vpc
+
+      - name: Terraform init (eks)
+        run: terraform init -backend=false
+        working-directory: infra/terraform/eks
+
+      - name: Terraform validate (eks)
+        run: terraform validate
+        working-directory: infra/terraform/eks
+
+      - name: Terraform init (iam)
+        run: terraform init -backend=false
+        working-directory: infra/terraform/iam
+
+      - name: Terraform validate (iam)
+        run: terraform validate
+        working-directory: infra/terraform/iam
+
+  # ── Helm lint ──────────────────────────────────────────────────────────────
+  helm-lint:
+    name: Lint Helm Charts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: "3.14.0"
+
+      - name: Lint service-a
+        run: helm lint apps/service-a/helm
+
+      - name: Lint service-b
+        run: helm lint apps/service-b/helm
+
+      - name: Lint observability
+        run: helm lint observability/helm --set prometheus.enabled=false --set loki.enabled=false --set tempo.enabled=false
+
+      - name: Template service-a
+        run: helm template test apps/service-a/helm
+
+      - name: Template service-b
+        run: helm template test apps/service-b/helm
+
+  # ── Build & push service-a ─────────────────────────────────────────────────
+  build-service-a:
+    name: Build & Push service-a
+    runs-on: ubuntu-latest
+    needs: [terraform-validate, helm-lint]
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          REPO: ${{ env.ECR_REGISTRY }}/service-a
+        run: |
+          docker build -t $REPO:$IMAGE_TAG -t $REPO:latest apps/service-a
+          docker push $REPO:$IMAGE_TAG
+          docker push $REPO:latest
+
+      - name: Update Helm values with new image tag
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          sed -i "s/tag: .*/tag: \"$IMAGE_TAG\"/" apps/service-a/helm/values.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/service-a/helm/values.yaml
+          git commit -m "chore(service-a): bump image to $IMAGE_TAG [skip ci]"
+          git push
+
+  # ── Build & push service-b ─────────────────────────────────────────────────
+  build-service-b:
+    name: Build & Push service-b
+    runs-on: ubuntu-latest
+    needs: [terraform-validate, helm-lint]
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          REPO: ${{ env.ECR_REGISTRY }}/service-b
+        run: |
+          docker build -t $REPO:$IMAGE_TAG -t $REPO:latest apps/service-b
+          docker push $REPO:$IMAGE_TAG
+          docker push $REPO:latest
+
+      - name: Update Helm values with new image tag
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          sed -i "s/tag: .*/tag: \"$IMAGE_TAG\"/" apps/service-b/helm/values.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/service-b/helm/values.yaml
+          git commit -m "chore(service-b): bump image to $IMAGE_TAG [skip ci]"
+          git push
