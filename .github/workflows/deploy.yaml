@@ -81,7 +81,7 @@ jobs:
     name: Build & Push service-a
     runs-on: ubuntu-latest
     needs: [terraform-validate, helm-lint]
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && secrets.AWS_DEPLOY_ROLE_ARN != ''
     permissions:
       contents: read
       id-token: write
@@ -124,7 +124,7 @@ jobs:
     name: Build & Push service-b
     runs-on: ubuntu-latest
     needs: [terraform-validate, helm-lint]
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && secrets.AWS_DEPLOY_ROLE_ARN != ''
     permissions:
       contents: read
       id-token: write
