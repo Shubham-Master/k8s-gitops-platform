@@ -1,39 +1,34 @@
 # Production-Ready Kubernetes Platform with GitOps (EKS + ArgoCD + Helm)
 
-### 🔧 A cloud-native, production-grade platform demonstrating GitOps automation, Kubernetes best practices, Infrastructure-as-Code, and full observability on AWS.
+### A cloud-native, production-grade platform demonstrating GitOps automation, Kubernetes best practices, Infrastructure-as-Code, and full observability on AWS.
 
 ![Terraform](https://img.shields.io/badge/IaC-Terraform-7B42BC?logo=terraform)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-AWS%20EKS-326CE5?logo=kubernetes)
 ![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD-EF7B4D?logo=argo)
 ![Helm](https://img.shields.io/badge/Helm-Charts-0F1689?logo=helm)
 ![AWS](https://img.shields.io/badge/Cloud-AWS-FF9900?logo=amazonaws)
-![GitHub](https://img.shields.io/badge/Repo-github.com%2FShubham--Master-181717?logo=github)
+![CI](https://github.com/Shubham-Master/k8s-gitops-platform/actions/workflows/deploy.yaml/badge.svg)
 
 ---
 
-## 🚀 Features
+## Features
 
-- **AWS EKS-based Kubernetes Cluster**
-- **GitOps automation** with ArgoCD (auto-sync, rollbacks, drift detection)
-- **Helm charts** for consistent microservice deployments
-- **Multi-environment setup** → `dev`, `stage`, `prod`
-- **Fully automated IaC** using Terraform modules (VPC, EKS, IAM)
-- **Observability stack** including:
-  - Prometheus (metrics)
-  - Grafana (dashboards)
-  - Loki (logs)
-  - Tempo (traces)
-- **AWS ALB Ingress Controller** for production-grade routing
-- **Secure CI/CD pipelines** via GitHub Actions
-- **Scalable and reusable platform-engineering blueprint**
+- **AWS EKS** cluster across 3 availability zones with managed node groups
+- **GitOps automation** via ArgoCD — auto-sync, self-heal, drift detection, rollbacks
+- **Helm charts** for each microservice with HPA, ALB ingress, health probes
+- **4-module Terraform** — VPC, IAM, EKS, IRSA (no circular dependencies)
+- **IRSA** (IAM Roles for Service Accounts) for ALB controller and cluster autoscaler
+- **Observability stack** — Prometheus, Grafana, Loki (S3), Tempo (S3)
+- **AWS ALB Ingress Controller** with HTTPS and path-based routing
+- **CI/CD pipeline** via GitHub Actions — fmt check, validate, Helm lint, Docker build & push
 
 ---
 
-## 📌 Architecture Overview
+## Architecture
 
 ```
                      ┌───────────────────────────────┐
-                     │           GitHub Repo         │
+                     │         GitHub Repo           │
                      │   (Helm + App Manifests)      │
                      └───────────────┬───────────────┘
                                      │ GitOps Pull
@@ -42,65 +37,107 @@
                         │        ArgoCD           │
                         │ (Sync, Drift, Rollback) │
                         └─────────┬───────────────┘
-                                  │ Applies Helm
+                                  │ Applies Helm Charts
                                   ▼
                ┌─────────────────────────────────────────────┐
-               │           AWS EKS Cluster (dev/stage/prod)  │
+               │        AWS EKS Cluster (us-east-1)          │
+               │     3 AZs · Managed Node Group · IRSA       │
                └──────────────────┬──────────────────────────┘
                                   │
-                                  ▼
-       ┌───────────────────────────────────────────────────────────┐
-       │ Microservices (Helm) + AWS ALB Ingress Controller         │
-       └───────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-            ┌────────────────────────────────────────────────┐
-            │  Observability Stack (Prometheus, Grafana,     │
-            │  Loki, Tempo)                                  │
-            └────────────────────────────────────────────────┘
+                    ┌─────────────┴──────────────┐
+                    ▼                            ▼
+         ┌──────────────────┐        ┌──────────────────────┐
+         │   service-a      │        │     service-b        │
+         │   (Helm + HPA)   │        │    (Helm + HPA)      │
+         └────────┬─────────┘        └──────────┬───────────┘
+                  └──────────┬────────────────────┘
+                             ▼
+                  ┌─────────────────────┐
+                  │   AWS ALB Ingress   │
+                  │  (HTTPS · internet) │
+                  └─────────────────────┘
+                             │
+                             ▼
+         ┌───────────────────────────────────────┐
+         │  Observability (namespace: monitoring) │
+         │  Prometheus · Grafana · Loki · Tempo   │
+         └───────────────────────────────────────┘
 ```
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 k8s-gitops-platform/
 │
-├── infra/
-│   ├── terraform/
-│   │   ├── vpc/
-│   │   ├── eks/
-│   │   ├── iam/
-│   │   └── outputs.tf
+├── infra/terraform/
+│   ├── main.tf               # Root module — wires vpc → iam → eks → irsa
+│   ├── outputs.tf
+│   ├── vpc/                  # VPC, subnets (public/private), NAT gateways
+│   ├── iam/                  # EKS cluster role + node role
+│   ├── eks/                  # EKS cluster, node group, OIDC provider
+│   └── irsa/                 # IRSA roles for ALB controller + cluster autoscaler
 │
 ├── argocd/
 │   ├── bootstrap/
-│   │   └── install-argocd.yaml
-│   ├── apps/
-│       ├── service-a.yaml
+│   │   └── install-argocd.yaml   # ArgoCD namespace, config, ALB ingress
+│   └── apps/
+│       ├── service-a.yaml        # ArgoCD Application manifest
 │       ├── service-b.yaml
-│       ├── observability.yaml
+│       └── observability.yaml
 │
 ├── apps/
 │   ├── service-a/
+│   │   ├── Dockerfile
+│   │   ├── cmd/main.go
+│   │   ├── go.mod
 │   │   └── helm/
-│   ├── service-b/
-│       └── helm/
+│   │       ├── Chart.yaml
+│   │       ├── values.yaml
+│   │       └── templates/
+│   │           ├── _helpers.tpl
+│   │           ├── deployment.yaml
+│   │           ├── service.yaml
+│   │           ├── ingress.yaml
+│   │           └── hpa.yaml
+│   └── service-b/             # Same structure as service-a
 │
-└── README.md
+├── observability/helm/        # kube-prometheus-stack + Loki + Tempo
+│
+└── .github/workflows/
+    └── deploy.yaml            # CI: fmt → validate → helm lint → build & push
 ```
 
 ---
 
-## ⚙️ Infrastructure Provisioning (Terraform)
+## Terraform Module Design
 
-### **1. Configure AWS**
+The 4 modules are wired in strict dependency order to avoid cycles:
+
+```
+module.vpc  ──────────────────────────────────────┐
+                                                  ▼
+module.iam  ──── (role ARNs) ──────────────► module.eks  ──── (OIDC) ──► module.irsa
+```
+
+| Module | Provisions |
+|--------|-----------|
+| `vpc`  | VPC, 3 public + 3 private subnets, NAT gateways, route tables |
+| `iam`  | EKS cluster IAM role, node IAM role (no OIDC dependency) |
+| `eks`  | EKS cluster, managed node group, OIDC provider |
+| `irsa` | ALB controller IRSA role, cluster autoscaler IRSA role |
+
+---
+
+## Infrastructure Provisioning
+
+### 1. Configure AWS credentials
 ```bash
 aws configure
 ```
 
-### **2. Deploy VPC + EKS + IAM**
+### 2. Deploy
 ```bash
 cd infra/terraform
 terraform init
@@ -108,142 +145,104 @@ terraform plan
 terraform apply
 ```
 
-Terraform provisions:
-
-- VPC networking (public/private subnets)
-- EKS cluster + node groups (or Fargate)
-- IAM roles & IRSA mappings
-- Autoscaling + cluster autoscaler permissions
-
----
-
-## 🎯 GitOps Application Deployment
-
-Each microservice is deployed through an ArgoCD `Application` manifest.
-
-### **Example (argocd/apps/service-a.yaml)**
-
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: service-a
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/Shubham-Master/k8s-gitops-platform
-    path: apps/service-a/helm
-    targetRevision: main
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: dev
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
+### 3. Update kubeconfig
+```bash
+aws eks update-kubeconfig --region us-east-1 --name gitops-platform
 ```
 
-### Why this matters:
-✔ GitOps auto-sync  
-✔ Helm-based deployment  
-✔ Namespace isolation  
-✔ Self-healing + drift correction  
-✔ Correct repo path  
+### Tear down (to avoid costs)
+```bash
+terraform destroy
+```
+
+> EKS costs ~$0.10/hr for the control plane. Destroy when not in use.
 
 ---
 
-## 📦 Helm Microservice Deployment
+## GitOps Bootstrap
 
-Structure:
+### Install ArgoCD
+```bash
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -f argocd/bootstrap/install-argocd.yaml
+```
+
+### Deploy all applications
+```bash
+kubectl apply -f argocd/apps/
+```
+
+ArgoCD auto-syncs from this repo. Every `git push` triggers a reconcile — no `kubectl apply` needed.
+
+---
+
+## Helm Chart Structure
+
+Each service follows the same pattern:
 
 ```
 apps/service-a/helm/
-│── templates/
-│   ├── deployment.yaml
-│   ├── service.yaml
-│   ├── ingress.yaml
-│── values.yaml
+├── Chart.yaml
+├── values.yaml          # image tag, replicas, ingress host, resources
+└── templates/
+    ├── _helpers.tpl
+    ├── deployment.yaml  # topologySpreadConstraints for AZ spread
+    ├── service.yaml
+    ├── ingress.yaml     # AWS ALB annotations
+    └── hpa.yaml         # CPU-based autoscaling
 ```
 
-Once pushed → ArgoCD auto-applies it.  
-No kubectl needed.
+---
+
+## Observability Stack
+
+Deployed to the `monitoring` namespace via ArgoCD from `observability/helm/`.
+
+| Tool | Purpose | Storage |
+|------|---------|---------|
+| Prometheus | Metrics scraping | EBS (gp3) |
+| Grafana | Dashboards + alerting | EBS (gp3) |
+| Loki | Log aggregation | S3 |
+| Tempo | Distributed tracing | S3 |
+
+Grafana is pre-configured with Loki and Tempo as data sources.
 
 ---
 
-## 📊 Observability Stack
+## CI/CD Pipeline
 
-Includes:
+`.github/workflows/deploy.yaml` runs on every push to `main`:
 
-- **Prometheus** → metrics  
-- **Grafana** → dashboards  
-- **Loki** → log aggregation  
-- **Tempo** → distributed tracing  
-
-Deployed via ArgoCD → always in sync with Git state.
-
----
-
-## 🌐 Ingress (AWS ALB)
-
-Example in `ingress.yaml`:
-
-```yaml
-annotations:
-  kubernetes.io/ingress.class: alb
-  alb.ingress.kubernetes.io/scheme: internet-facing
+```
+Terraform fmt check
+    │
+Terraform validate (vpc / iam / eks)
+    │
+Helm lint (service-a / service-b / observability)
+    │
+Docker build & push to ECR  ← skipped if AWS secrets not configured
+    │
+GitOps tag bump → ArgoCD picks up new image automatically
 ```
 
-Supports HTTPS, path routing, multi-service routing.
+---
+
+## Requirements
+
+| Tool | Version |
+|------|---------|
+| Terraform | >= 1.15 |
+| kubectl | >= 1.29 |
+| helm | >= 3.14 |
+| AWS CLI | >= 2.0 |
+| ArgoCD CLI | optional |
 
 ---
 
-## 🧪 CI/CD Pipeline (GitHub Actions)
+## Future Enhancements
 
-Pipeline includes:
-
-- Validate Terraform
-- Lint Helm charts
-- Build & push Docker images
-- GitOps-triggered deployment (ArgoCD auto-sync)
-
-Workflow file:  
-`.github/workflows/deploy.yaml`
-
----
-
-## 🛠 Requirements
-
-- AWS account  
-- Terraform (>=1.4)  
-- kubectl  
-- helm  
-- Docker  
-- ArgoCD CLI (optional)
-
----
-
-## 🚀 Future Enhancements
-
-- Istio or Linkerd service mesh
-- Argo Rollouts (canary/blue-green)
-- Multi-cluster GitOps (App-of-Apps)
-- Cilium + Hubble (eBPF networking + observability)
-- Fargate profiles for isolated workloads
-
----
-
-## 🎉 Conclusion
-
-This project showcases your expertise in:
-
-- AWS + Kubernetes  
-- GitOps automation  
-- Terraform IaC  
-- Helm packaging  
-- Monitoring & Observability  
-- Platform Engineering at scale  
-
-
----
+- Argo Rollouts — canary / blue-green deployments
+- Istio service mesh — mTLS, traffic management
+- App-of-Apps pattern — multi-cluster GitOps
+- Sealed Secrets — encrypted secrets in Git
+- Cilium + Hubble — eBPF networking and observability
